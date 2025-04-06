@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Real-Time AQI Map</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.css" rel="stylesheet" />
+  <style>
+    body, html {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: #f4f7fa;
+    }
+
+    #map {
+      width: 100%;
+      height: 100vh;
+    }
+
+    .popup {
+      font-size: 15px;
+      color: #333;
+      background: #fff;
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.25);
+      line-height: 1.5;
+      width: 250px;
+    }
+
+    .popup strong {
+      font-size: 18px;
+      color: #4e8cff;
+    }
+
+    .popup p {
+      margin: 4px 0;
+    }
+
+    .popup em {
+      color: #777;
+      font-size: 13px;
+    }
+
+    #modeToggle {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      z-index: 999;
+      padding: 10px 16px;
+      background: linear-gradient(to right, #4e8cff, #7aa3ff);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      font-weight: bold;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    #modeToggle:hover {
+      background: linear-gradient(to right, #3d78e0, #6f96f5);
+    }
+
+    .aqi-good { color: #009966; }
+    .aqi-moderate { color: #ffde33; }
+    .aqi-unhealthy-sens { color: #ff9933; }
+    .aqi-unhealthy { color: #cc0033; }
+    .aqi-very-unhealthy { color: #660099; }
+    .aqi-hazardous { color: #7e0023; }
+  </style>
+</head>
+<body>
+  <button id="modeToggle">Switch to Dark Mode</button>
+  <div id="map"></div>
+
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.14.1/mapbox-gl.js"></script>
+  <script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoic2lydXpob25nIiwiYSI6ImNsamJpNXdvcTFoc24zZG14NWU5azdqcjMifQ.W_2t66prRsaq8lZMSdfKzg';
+
+    let mapStyle = 'mapbox://styles/mapbox/outdoors-v12'; // colorful style
+    const map = new mapboxgl.Map({
+      container: 'map',
+      style: mapStyle,
+      center: [78.9629, 22.5937],
+      zoom: 4
+    });
+
+    let socket;
+    let isSocketReady = false;
+    let currentPopup = null;
+
+    function getAQIClass(aqi) {
+      if (aqi <= 50) return 'aqi-good';
+      if (aqi <= 100) return 'aqi-moderate';
+      if (aqi <= 150) return 'aqi-unhealthy-sens';
+      if (aqi <= 200) return 'aqi-unhealthy';
+      if (aqi <= 300) return 'aqi-very-unhealthy';
+      return 'aqi-hazardous';
+    }
+
+    function connectWebSocket() {
+      socket = new WebSocket('wss://aqi-ws-server.onrender.com');
+
+      socket.onopen = () => {
+        console.log('✅ WebSocket connected');
+        isSocketReady = true;
+      };
+
+      socket.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        console.log('📡 AQI Data:', data);
+
+        if (!currentPopup) return;
+
+        if (data.error) {
+          currentPopup.setHTML(`<div class="popup"><strong>Error:</strong> ${data.error}</div>`);
+          return;
+        }
+
+        const pollutants = data.pollutants || {};
+        const time = new Date().toLocaleTimeString();
+        const aqiClass = getAQIClass(data.aqiIndex);
+
+        const content = `
+          <div class="popup">
+            <strong>${data.city}</strong>
+            <p><strong>AQI Level:</strong> <span class="${aqiClass}">${data.aqiLevel}</span></p>
+            <p><strong>AQI Index:</strong> <span class="${aqiClass}">${data.aqiIndex}</span></p>
+            <p><strong>PM2.5:</strong> ${pollutants.pm2_5 ?? 'N/A'}</p>
+            <p><strong>PM10:</strong> ${pollutants.pm10 ?? 'N/A'}</p>
+            <p><strong>O₃:</strong> ${pollutants.o3 ?? 'N/A'}</p>
+            <p><strong>NO₂:</strong> ${pollutants.no2 ?? 'N/A'}</p>
+            <p><strong>SO₂:</strong> ${pollutants.so2 ?? 'N/A'}</p>
+            <p><strong>CO:</strong> ${pollutants.co ?? 'N/A'}</p>
+            <p><strong>Advice:</strong> ${data.advice}</p>
+            <p><em>🕒 Fetched at: ${time}</em></p>
+          </div>
+        `;
+        currentPopup.setHTML(content);
+      };
+
+      socket.onerror = (e) => {
+        console.error('❌ WebSocket error:', e);
+        isSocketReady = false;
+      };
+
+      socket.onclose = () => {
+        console.warn('🔌 WebSocket disconnected, retrying in 3s...');
+        isSocketReady = false;
+        setTimeout(connectWebSocket, 3000);
+      };
+    }
+
+    connectWebSocket();
+
+    map.on('click', async (e) => {
+      const { lat, lng } = e.lngLat;
+
+      currentPopup = new mapboxgl.Popup()
+        .setLngLat([lng, lat])
+        .setHTML('<div class="popup"><strong>Fetching city and AQI...</strong></div>')
+        .addTo(map);
+
+      try {
+        const geoURL = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?types=place&access_token=${mapboxgl.accessToken}`;
+        const res = await fetch(geoURL);
+        const json = await res.json();
+
+        if (json.features.length === 0) {
+          currentPopup.setHTML('<div class="popup"><strong>City not found</strong></div>');
+          return;
+        }
+
+        const city = json.features[0].text;
+        console.log('📍 Nearest city:', city);
+
+        if (isSocketReady && socket.readyState === WebSocket.OPEN) {
+          socket.send(city);
+        } else {
+          currentPopup.setHTML('<div class="popup"><strong>Connecting... please wait</strong></div>');
+        }
+      } catch (err) {
+        console.error('Geocoding error:', err);
+        currentPopup.setHTML('<div class="popup"><strong>Geocoding failed</strong></div>');
+      }
+    });
+
+    const modeBtn = document.getElementById('modeToggle');
+    let isDark = false;
+    modeBtn.addEventListener('click', () => {
+      isDark = !isDark;
+      map.setStyle(isDark ? 'mapbox://styles/mapbox/navigation-night-v1' : 'mapbox://styles/mapbox/outdoors-v12');
+      modeBtn.textContent = isDark ? 'Switch to Light Mode' : 'Switch to Dark Mode';
+    });
+  </script>
+</body>
+</html>

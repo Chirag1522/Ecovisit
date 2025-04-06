@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>🌍 AQI Comparison Tool</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f0f4f8;
+      color: #333;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      padding: 40px 20px;
+    }
+
+    h1 {
+      text-align: center;
+      color: #2c3e50;
+      margin-bottom: 30px;
+    }
+
+    .inputs {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 30px;
+    }
+
+    input {
+      padding: 10px;
+      font-size: 16px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      width: 200px;
+    }
+
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #2980b9;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #1c5982;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+      margin-top: 10px;
+    }
+
+    .results {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      justify-content: center;
+      margin-top: 30px;
+    }
+
+    .city-box {
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
+      flex: 1;
+      min-width: 480px;
+    }
+
+    .pollutant-info {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+    }
+
+    canvas {
+      max-width: 100%;
+      margin-top: 20px;
+    }
+
+    @media (max-width: 1000px) {
+      .results {
+        flex-direction: column;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🌍 AQI Comparison Tool</h1>
+
+    <div class="inputs">
+      <input type="text" id="city1" placeholder="Enter first city" />
+      <input type="text" id="city2" placeholder="Enter second city" />
+      <button onclick="compareCities()">Compare</button>
+    </div>
+
+    <div class="error" id="error"></div>
+
+    <div class="results" id="results"></div>
+  </div>
+
+  <script>
+    const socket = new WebSocket("wss://aqi-ws-server.onrender.com");
+    const cityData = {};
+
+    const pollutantDescriptions = {
+      pm2_5: "Fine particulate matter (PM2.5) - Can penetrate lungs and affect health.",
+      pm10: "Coarse particles (PM10) - Can cause respiratory issues.",
+      no2: "Nitrogen dioxide (NO₂) - Harmful to lungs, causes smog.",
+      so2: "Sulfur dioxide (SO₂) - Irritates eyes and throat.",
+      o3: "Ozone (O₃) - Affects respiratory system.",
+      co: "Carbon monoxide (CO) - Reduces oxygen in the body.",
+      nh3: "Ammonia (NH₃) - Irritating and toxic in high amounts."
+    };
+
+    socket.onopen = () => {
+      console.log("✅ Connected to WebSocket server");
+    };
+
+    socket.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.error) {
+        document.getElementById("error").innerText = data.error;
+        return;
+      }
+
+      cityData[data.city] = data;
+      if (Object.keys(cityData).length === 2) {
+        displayResults();
+      }
+    };
+
+    function compareCities() {
+      document.getElementById("results").innerHTML = '';
+      document.getElementById("error").innerText = '';
+
+      Object.keys(cityData).forEach(key => delete cityData[key]);
+
+      const city1 = document.getElementById("city1").value.trim();
+      const city2 = document.getElementById("city2").value.trim();
+
+      if (city1 && city2 && city1.toLowerCase() !== city2.toLowerCase()) {
+        socket.send(city1);
+        socket.send(city2);
+      } else {
+        document.getElementById("error").innerText = "Please enter two different valid city names.";
+      }
+    }
+
+    function displayResults() {
+      const container = document.getElementById("results");
+      container.innerHTML = '';
+
+      const [city1, city2] = Object.keys(cityData);
+
+      [city1, city2].forEach(city => {
+        const data = cityData[city];
+        const box = document.createElement("div");
+        box.className = "city-box";
+
+        const pollutantDetails = Object.entries(data.pollutants)
+          .map(([key, value]) => {
+            const desc = pollutantDescriptions[key] || '';
+            return `
+              <li><strong>${key.toUpperCase()}:</strong> ${value} μg/m³
+                <div class="pollutant-info">${desc}</div>
+              </li>
+            `;
+          }).join('');
+
+        box.innerHTML = `
+          <h2>${city}</h2>
+          <p><strong>AQI Level:</strong> ${data.aqiLevel} (${data.aqiIndex})</p>
+          <p><strong>Health Advice:</strong> ${data.advice}</p>
+          <h4>Pollutants:</h4>
+          <ul>${pollutantDetails}</ul>
+          <canvas id="chart-${city}"></canvas>
+        `;
+        container.appendChild(box);
+      });
+
+      drawCharts(city1, cityData[city1].pollutants);
+      drawCharts(city2, cityData[city2].pollutants);
+    }
+
+    function drawCharts(city, pollutants) {
+      const ctx = document.getElementById(`chart-${city}`).getContext("2d");
+      new Chart(ctx, {
+        type: "bar",
+        data: {
+          labels: Object.keys(pollutants).map(p => p.toUpperCase()),
+          datasets: [{
+            label: `Pollutants in ${city}`,
+            data: Object.values(pollutants),
+            backgroundColor: [
+              "#1abc9c", "#3498db", "#9b59b6",
+              "#f1c40f", "#e67e22", "#e74c3c",
+              "#2ecc71"
+            ],
+          }]
+        },
+        options: {
+          responsive: true,
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: "Concentration (μg/m³)"
+              }
+            }
+          },
+          plugins: {
+            legend: {
+              display: false
+            },
+            title: {
+              display: true,
+              text: "Pollutant Concentrations"
+            }
+          }
+        }
+      });
+    }
+  </script>
+</body>
+</html>

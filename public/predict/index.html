@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AQI Prediction</title>
+    <link rel="stylesheet" href="styles.css"> <!-- Link to CSS file if needed -->
+    <script src="historical_aqi.js" defer></script> <!-- Link to your historical AQI data script -->
+    <script src="app.js" defer></script> <!-- Link to your app.js -->
+    <style>
+        /* Header Styling */
+header {
+    background-color: rgba(225, 239, 244, 0.8); /* Semi-transparent background */
+    padding: 10px 30px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    position: fixed; /* Keep header fixed */
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+}
+
+.header-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 40px;
+}
+
+/* Logo and site title */
+.logo-title {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    width: 50px; /* Adjust the size of the logo */
+    height: auto;
+    margin-right: 15px; /* Space between logo and EcoVisit text */
+    opacity: 0.8; /* Adjust opacity for blending effect */
+}
+
+.site-title {
+    font-size: 2.5rem;
+    color: #0b0c0c;
+}
+
+/* Navigation Button Styles */
+nav .nav-button {
+    margin-left: 15px;
+            text-decoration: none;
+            color: rgb(36, 34, 41);
+            font-size: 20px;
+            padding: 8px 12px;
+            border-radius: 4px;
+            gap: 3px;
+            /* transition: background-color 0.3s; */
+            transition: all 0.3s ease;
+            border-radius: 6px;
+            margin-right: 5px;
+}
+
+nav .nav-button:hover {
+    background: linear-gradient(135deg, #4ca1af, #4286a8);
+    color: white;
+    box-shadow: 0 4px 10px rgba(66, 134, 168, 0.4);
+}
+
+    </style>
+</head>
+<body>
+    <!-- Header Section -->
+    <header>
+        <div class="header-content">
+            <div class="logo-title">
+                <img src="LOGO.jpg" alt="EcoVisit Logo" class="logo"> <!-- Logo -->
+                <h1 class="site-title">EcoVisit</h1>
+            </div>
+            <nav>
+                <a href="/" class="nav-button">Home</a>
+                <a href="../compare/index.html" class="nav-button">Comparison</a>
+                <a href="/indexmap.html" class="nav-button">Map</a>
+                <a href="../predict/index.html" class="nav-button active">Predict</a>
+                <a href="../about.html" class="nav-button">About Us</a>
+            </nav>
+        </div>
+    </header>
+
+    <div class="container">
+        <h1>AQI Prediction for Your Travel</h1>
+        <form id="aqiForm">
+            <label for="state">Choose a State/Union Territory:</label>
+            <input list="states" id="state" placeholder="Type to filter states or UTs">
+            
+            <datalist id="states">
+                <option value="Andaman and Nicobar Islands"></option>
+                <option value="Andhra Pradesh"></option>
+                <option value="Arunachal Pradesh"></option>
+                <option value="Assam"></option>
+                <option value="Bihar"></option>
+                <option value="Chandigarh"></option>
+                <option value="Chhattisgarh"></option>
+                <option value="Dadra and Nagar Haveli and Daman and Diu"></option>
+                <option value="Delhi"></option>
+                <option value="Goa"></option>
+                <option value="Gujarat"></option>
+                <option value="Haryana"></option>
+                <option value="Himachal Pradesh"></option>
+                <option value="Jammu and Kashmir"></option>
+                <option value="Jharkhand"></option>
+                <option value="Karnataka"></option>
+                <option value="Kerala"></option>
+                <option value="Ladakh"></option>
+                <option value="Lakshadweep"></option>
+                <option value="Madhya Pradesh"></option>
+                <option value="Maharashtra"></option>
+                <option value="Manipur"></option>
+                <option value="Meghalaya"></option>
+                <option value="Mizoram"></option>
+                <option value="Nagaland"></option>
+                <option value="Odisha"></option>
+                <option value="Puducherry"></option>
+                <option value="Punjab"></option>
+                <option value="Rajasthan"></option>
+                <option value="Sikkim"></option>
+                <option value="Tamil Nadu"></option>
+                <option value="Telangana"></option>
+                <option value="Tripura"></option>
+                <option value="Uttar Pradesh"></option>
+                <option value="Uttarakhand"></option>
+                <option value="West Bengal"></option>
+            </datalist>
+
+            <label for="month">Select Month:</label>
+            <select id="month" required>
+                <option value="" disabled selected>Select a month</option>
+                <option value="1">January</option>
+                <option value="2">February</option>
+                <option value="3">March</option>
+                <option value="4">April</option>
+                <option value="5">May</option>
+                <option value="6">June</option>
+                <option value="7">July</option>
+                <option value="8">August</option>
+                <option value="9">September</option>
+                <option value="10">October</option>
+                <option value="11">November</option>
+                <option value="12">December</option>
+            </select>
+
+            <button type="submit">Predict AQI</button>
+        </form>
+
+        <div id="result" class="result">
+            <!-- Results will be displayed here -->
+        </div>
+    </div>
+
+    <script>
+        document.getElementById("aqiForm").addEventListener("submit", function (event) {
+            event.preventDefault(); // Prevent form submission
+            const state = document.getElementById("state").value;
+            const month = parseInt(document.getElementById("month").value);
+            const result = predictAQI(state, month); // Call the predictAQI function
+            displayResult(result);
+        });
+
+        function displayResult(result) {
+            const resultDiv = document.getElementById("result");
+            if (result.prediction !== null) {
+                resultDiv.innerHTML = `<h2>Predicted AQI: ${result.prediction}</h2><p>${result.suggestion}</p>`;
+            } else {
+                resultDiv.innerHTML = `<h2>Error: ${result.message}</h2>`;
+            }
+        }
+    </script>
+</body>
+<footer>
+    <p>&copy; 2024 EcoVisit. All rights reserved.</p>
+</footer>
+</html>
