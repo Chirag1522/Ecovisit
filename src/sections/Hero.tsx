@@ -37,7 +37,7 @@ export const Hero = () => {
               </motion.h1>
 
               <p className="text-lg sm:text-2xl md:text-3xl text-[#2E7D32] tracking-tight mt-4 sm:mt-6">
-                "Stay informed and take control of your environment with EcoVisit—monitor air quality, compare pollution levels, and predict future trends for a healthier tomorrow."
+                Stay informed and take control of your environment with EcoVisit—monitor air quality, compare pollution levels, and predict future trends for a healthier tomorrow.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 sm:gap-2 items-center justify-center md:justify-start mt-8">
