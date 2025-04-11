@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef } from "react";
 import { CallToAction } from "@/sections/CallToAction";
 import { Footer } from "@/sections/Footer";
 import { Header } from "@/sections/Header";
@@ -7,14 +10,22 @@ import { ProductShowcase } from "@/sections/ProductShowcase";
 import { Testimonials } from "@/sections/Testimonials";
 
 export default function Home() {
+  const testimonialsRef = useRef<HTMLDivElement | null>(null);
+
+  const scrollToTestimonials = () => {
+    testimonialsRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
+
   return (
     <>
-      <Header />
+      <Header onLatestNewsClick={scrollToTestimonials} />
       <Hero />
-      <LogoTicker />
-      <ProductShowcase />
-      <Testimonials />
-      <CallToAction />
+      
+      {/* 👇 Latest News / Testimonials section */}
+      <div ref={testimonialsRef}>
+        <Testimonials />
+      </div>
+
       <Footer />
     </>
   );

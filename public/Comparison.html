@@ -2,118 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>🌍 AQI Comparison Tool</title>
+  <title> AQI Comparison </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      margin: 0;
-      padding: 0;
-      background: #f0f4f8;
-      color: #333;
-    }
-
-    .container {
-      max-width: 1200px;
-      margin: auto;
-      padding: 40px 20px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #2c3e50;
-      margin-bottom: 30px;
-    }
-
-    .inputs {
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-      flex-wrap: wrap;
-      margin-bottom: 30px;
-    }
-
-    input {
-      padding: 10px;
-      font-size: 16px;
-      border-radius: 5px;
-      border: 1px solid #ccc;
-      width: 200px;
-    }
-
-    button {
-      padding: 10px 20px;
-      font-size: 16px;
-      background-color: #2980b9;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #1c5982;
-    }
-
-    .error {
-      color: red;
-      text-align: center;
-      margin-top: 10px;
-    }
-
-    .results {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 20px;
-      justify-content: center;
-      margin-top: 30px;
-    }
-
-    .city-box {
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.05);
-      flex: 1;
-      min-width: 480px;
-    }
-
-    .pollutant-info {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #666;
-    }
-
-    canvas {
-      max-width: 100%;
-      margin-top: 20px;
-    }
-
-    @media (max-width: 1000px) {
-      .results {
-        flex-direction: column;
-      }
-    }
-  </style>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body>
-  <div class="container">
-    <h1>🌍 AQI Comparison Tool</h1>
+<body class="bg-blue-50 text-gray-800 font-sans">
+  <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10">
+    <h1 class="text-3xl sm:text-4xl font-extrabold text-center text-blue-700 mb-10">🌿 AQI Comparison Tool</h1>
 
-    <div class="inputs">
-      <input type="text" id="city1" placeholder="Enter first city" />
-      <input type="text" id="city2" placeholder="Enter second city" />
-      <button onclick="compareCities()">Compare</button>
+    <div class="flex flex-col sm:flex-row flex-wrap justify-center gap-4 mb-6">
+      <input id="city1" class="w-full sm:w-auto flex-1 px-4 py-2 rounded-xl border border-gray-300 shadow focus:outline-none focus:ring-2 focus:ring-blue-400 transition" placeholder="Enter first city" />
+      <input id="city2" class="w-full sm:w-auto flex-1 px-4 py-2 rounded-xl border border-gray-300 shadow focus:outline-none focus:ring-2 focus:ring-blue-400 transition" placeholder="Enter second city" />
+      <button onclick="compareCities()" class="px-6 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition w-full sm:w-auto">Compare</button>
     </div>
 
-    <div class="error" id="error"></div>
-
-    <div class="results" id="results"></div>
+    <div id="error" class="text-center text-red-500 mb-4"></div>
+    <div id="results" class="grid grid-cols-1 md:grid-cols-2 gap-8 justify-center"></div>
   </div>
+
 
   <script>
     const socket = new WebSocket("wss://aqi-ws-server.onrender.com");
+    let expectedCities = [];
     const cityData = {};
+    const charts = {};
 
     const pollutantDescriptions = {
       pm2_5: "Fine particulate matter (PM2.5) - Can penetrate lungs and affect health.",
@@ -125,9 +38,7 @@
       nh3: "Ammonia (NH₃) - Irritating and toxic in high amounts."
     };
 
-    socket.onopen = () => {
-      console.log("✅ Connected to WebSocket server");
-    };
+    socket.onopen = () => console.log("✅ Connected to WebSocket server");
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
@@ -136,84 +47,126 @@
         return;
       }
 
+      if (!expectedCities.includes(data.city)) return;
+
       cityData[data.city] = data;
+
       if (Object.keys(cityData).length === 2) {
         displayResults();
       }
     };
 
     function compareCities() {
+      const city1 = document.getElementById("city1").value.trim();
+      const city2 = document.getElementById("city2").value.trim();
       document.getElementById("results").innerHTML = '';
       document.getElementById("error").innerText = '';
 
-      Object.keys(cityData).forEach(key => delete cityData[key]);
-
-      const city1 = document.getElementById("city1").value.trim();
-      const city2 = document.getElementById("city2").value.trim();
-
-      if (city1 && city2 && city1.toLowerCase() !== city2.toLowerCase()) {
-        socket.send(city1);
-        socket.send(city2);
-      } else {
+      if (!city1 || !city2 || city1.toLowerCase() === city2.toLowerCase()) {
         document.getElementById("error").innerText = "Please enter two different valid city names.";
+        return;
       }
+
+      expectedCities = [city1, city2];
+      Object.keys(cityData).forEach(key => delete cityData[key]);
+      Object.values(charts).forEach(chart => chart.destroy());
+      Object.keys(charts).forEach(key => delete charts[key]);
+
+      socket.send(city1);
+      socket.send(city2);
     }
 
     function displayResults() {
       const container = document.getElementById("results");
       container.innerHTML = '';
 
-      const [city1, city2] = Object.keys(cityData);
-
-      [city1, city2].forEach(city => {
+      expectedCities.forEach(city => {
         const data = cityData[city];
-        const box = document.createElement("div");
-        box.className = "city-box";
+        const card = document.createElement("div");
+        card.className = "bg-white p-6 rounded-xl shadow-lg w-full sm:w-[500px]";
 
-        const pollutantDetails = Object.entries(data.pollutants)
-          .map(([key, value]) => {
-            const desc = pollutantDescriptions[key] || '';
-            return `
-              <li><strong>${key.toUpperCase()}:</strong> ${value} μg/m³
-                <div class="pollutant-info">${desc}</div>
-              </li>
-            `;
-          }).join('');
+        const pollutants = Object.entries(data.pollutants).map(([key, value]) => {
+          const desc = pollutantDescriptions[key] || '';
+          return `<li class="mb-2"><strong>${key.toUpperCase()}:</strong> ${value} μg/m³
+                    <div class="text-sm text-gray-500">${desc}</div></li>`;
+        }).join('');
 
-        box.innerHTML = `
-          <h2>${city}</h2>
+        card.innerHTML = `
+          <h2 class="text-xl font-semibold text-blue-700 mb-2">${city}</h2>
           <p><strong>AQI Level:</strong> ${data.aqiLevel} (${data.aqiIndex})</p>
-          <p><strong>Health Advice:</strong> ${data.advice}</p>
-          <h4>Pollutants:</h4>
-          <ul>${pollutantDetails}</ul>
-          <canvas id="chart-${city}"></canvas>
+          <p class="mb-4"><strong>Health Advice:</strong> ${data.advice}</p>
+          <h4 class="font-semibold mt-4 mb-2">Pollutants:</h4>
+          <ul class="list-disc pl-5 text-sm">${pollutants}</ul>
+          <div class="mt-4 space-x-2">
+            <button class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded" onclick="updateChartType('${city}', 'bar')">Bar</button>
+            <button class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded" onclick="updateChartType('${city}', 'pie')">Pie</button>
+            <button class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded" onclick="updateChartType('${city}', 'radar')">Radar</button>
+          </div>
+          <canvas id="chart-${city}" class="mt-4 w-full h-64"></canvas>
         `;
-        container.appendChild(box);
-      });
 
-      drawCharts(city1, cityData[city1].pollutants);
-      drawCharts(city2, cityData[city2].pollutants);
+        container.appendChild(card);
+        drawChart(city, data.pollutants, "bar");
+      });
     }
 
-    function drawCharts(city, pollutants) {
-      const ctx = document.getElementById(`chart-${city}`).getContext("2d");
-      new Chart(ctx, {
-        type: "bar",
+    function updateChartType(city, type) {
+      if (charts[city]) {
+        charts[city].destroy();
+      }
+      drawChart(city, cityData[city].pollutants, type);
+    }
+
+    function drawChart(city, pollutants, type = "bar") {
+      const canvasId = `chart-${city}`;
+      const canvas = document.getElementById(canvasId);
+
+      if (!canvas) return;
+
+      const newCanvas = canvas.cloneNode(true);
+      canvas.parentNode.replaceChild(newCanvas, canvas);
+      const ctx = newCanvas.getContext("2d");
+
+      const labels = Object.keys(pollutants).map(p => p.toUpperCase());
+      const values = Object.values(pollutants);
+
+      const backgroundColors = [
+        "rgba(26, 188, 156, 0.6)",
+        "rgba(52, 152, 219, 0.6)",
+        "rgba(155, 89, 182, 0.6)",
+        "rgba(241, 196, 15, 0.6)",
+        "rgba(230, 126, 34, 0.6)",
+        "rgba(231, 76, 60, 0.6)",
+        "rgba(46, 204, 113, 0.6)"
+      ];
+
+      const borderColors = backgroundColors.map(color => color.replace("0.6", "1"));
+
+      charts[city] = new Chart(ctx, {
+        type: type,
         data: {
-          labels: Object.keys(pollutants).map(p => p.toUpperCase()),
+          labels: labels,
           datasets: [{
             label: `Pollutants in ${city}`,
-            data: Object.values(pollutants),
-            backgroundColor: [
-              "#1abc9c", "#3498db", "#9b59b6",
-              "#f1c40f", "#e67e22", "#e74c3c",
-              "#2ecc71"
-            ],
+            data: values,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: 1
           }]
         },
         options: {
           responsive: true,
-          scales: {
+          maintainAspectRatio: true,
+          plugins: {
+            title: {
+              display: true,
+              text: `${type.charAt(0).toUpperCase() + type.slice(1)} Chart of Pollutants`
+            },
+            legend: {
+              display: type !== "bar"
+            }
+          },
+          scales: type === "bar" ? {
             y: {
               beginAtZero: true,
               title: {
@@ -221,19 +174,11 @@
                 text: "Concentration (μg/m³)"
               }
             }
-          },
-          plugins: {
-            legend: {
-              display: false
-            },
-            title: {
-              display: true,
-              text: "Pollutant Concentrations"
-            }
-          }
+          } : {}
         }
       });
     }
   </script>
 </body>
 </html>
+

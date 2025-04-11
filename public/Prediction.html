@@ -6,85 +6,242 @@
   <title>AQI Prediction</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      font-family: Arial, sans-serif;
-      margin: 2rem;
-      background-color: #f4f7fa;
-      color: #333;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(135deg, #dfe9f3, #ffffff);
+      color: #2c3e50;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
 
     h1 {
+      margin-top: 2rem;
+      font-size: 2rem;
       color: #2c3e50;
     }
 
-    input, button {
-      padding: 10px;
+    .container {
+      width: 90%;
+      max-width: 700px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 1rem;
+    }
+
+    input, button, select {
+      width: 100%;
+      max-width: 400px;
+      padding: 12px;
       margin: 10px 0;
       font-size: 1rem;
-      border-radius: 6px;
+      border-radius: 8px;
       border: 1px solid #ccc;
-      width: 250px;
+      transition: all 0.3s ease;
     }
 
     button {
       background-color: #3498db;
       color: white;
       border: none;
-      cursor: pointer;
+      font-weight: bold;
     }
 
     button:hover {
       background-color: #2980b9;
+      transform: scale(1.03);
     }
 
     #summary {
       margin: 1rem 0;
       font-weight: bold;
-      color: #2d3436;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-      margin-bottom: 2rem;
-    }
-
-    th, td {
-      border: 1px solid #ccc;
-      padding: 8px 12px;
+      font-size: 1.1rem;
       text-align: center;
-    }
-
-    th {
-      background-color: #2d98da;
-      color: white;
-    }
-
-    canvas {
-      max-width: 100%;
-      height: 400px;
+      color: #2d3436;
     }
 
     #error-message {
       color: red;
       font-weight: bold;
       margin-top: 0.5rem;
+      text-align: center;
     }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 10px;
+      text-align: center;
+    }
+
+    th {
+      background-color: #2980b9;
+      color: white;
+    }
+
+    canvas {
+      max-width: 100%;
+      height: auto;
+      margin-top: 2rem;
+    }
+
+    @media (max-width: 600px) {
+      input, button, select {
+        width: 100%;
+      }
+
+      th, td {
+        font-size: 0.9rem;
+        padding: 6px;
+      }
+    }/* ... keep all your existing styles above */
+
+@media (max-width: 768px) {
+  body {
+    padding: 0 1rem;
+    font-size: 1rem;
+  }
+
+  h1 {
+    font-size: 1.8rem;
+    text-align: center;
+    line-height: 1.4;
+    margin-bottom: 1rem;
+  }
+
+  .container {
+    width: 100%;
+    padding: 0 1rem;
+    box-sizing: border-box;
+  }
+
+  input,
+  button,
+  select {
+    width: 100%;
+    max-width: 100%;
+    font-size: 1rem;
+    padding: 12px;
+    margin-bottom: 1rem;
+    box-sizing: border-box;
+  }
+
+  button {
+    font-weight: bold;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #0056b3;
+  }
+
+  table {
+    width: 100%;
+    overflow-x: auto;
+    display: block;
+    font-size: 0.9rem;
+  }
+
+  th,
+  td {
+    font-size: 0.9rem;
+    padding: 8px;
+    text-align: center;
+  }
+
+  #summary {
+    font-size: 1rem;
+    text-align: center;
+    padding: 1rem 0.5rem;
+  }
+
+  canvas {
+    width: 100% !important;
+    height: auto !important;
+    margin-top: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  h1 {
+    font-size: 1.4rem;
+    padding: 0.5rem;
+  }
+
+  .container {
+    padding: 0 0.75rem;
+  }
+
+  input,
+  button,
+  select {
+    font-size: 0.95rem;
+    padding: 10px;
+  }
+
+  th,
+  td {
+    font-size: 0.85rem;
+    padding: 6px;
+  }
+
+  table {
+    font-size: 0.85rem;
+  }
+
+  #summary {
+    font-size: 0.95rem;
+    padding: 0.5rem;
+  }
+
+  canvas {
+    margin-top: 1rem;
+  }
+}
+
   </style>
 </head>
 <body>
-  <h1>AQI Forecast</h1>
 
-  <label for="city">Enter a city name:</label><br/>
-  <input type="text" id="city" placeholder="e.g., Mumbai" />
-  <br/>
-  <div id="error-message"></div>
-  <button onclick="fetchPrediction()">Get Prediction</button>
+  <h1>AQI Prediction</h1>
 
-  <p id="summary"></p>
-  <table id="prediction-table"></table>
-  <canvas id="aqiChart"></canvas>
+  <div class="container">
+    <input type="text" id="city" placeholder="Enter city name (e.g., Mumbai)" />
+    
+    <select id="chartType">
+      <option value="line">Line Chart</option>
+      <option value="bar">Bar Chart</option>
+      <option value="area">Area Chart</option>
+    </select>
+
+    <div id="error-message"></div>
+
+    <button onclick="fetchPrediction()">Get Prediction</button>
+
+    <p id="summary"></p>
+
+    <table id="prediction-table"></table>
+
+    <canvas id="aqiChart"></canvas>
+  </div>
 
   <script>
     let chartInstance = null;
@@ -94,12 +251,14 @@
       const summary = document.getElementById("summary");
       const table = document.getElementById("prediction-table");
       const errorMessage = document.getElementById("error-message");
+      const chartType = document.getElementById("chartType").value;
+
       summary.textContent = "";
       table.innerHTML = "";
       errorMessage.textContent = "";
+
       if (chartInstance) chartInstance.destroy();
 
-      // Input validation
       if (!city) {
         errorMessage.textContent = "Please enter a city name.";
         return;
@@ -125,11 +284,11 @@
         }
 
         displayTable(data);
-        drawChart(data);
+        drawChart(data, chartType);
         showSummary(data);
       } catch (err) {
         console.error(err);
-        errorMessage.textContent = "Error fetching prediction data. Is your FastAPI backend running?";
+        errorMessage.textContent = "Error fetching data.";
       }
     }
 
@@ -157,7 +316,7 @@
       });
     }
 
-    function drawChart(data) {
+    function drawChart(data, type) {
       const ctx = document.getElementById('aqiChart').getContext('2d');
 
       const labels = data.predictions.map(p => new Date(p.ds).toDateString());
@@ -165,16 +324,20 @@
       const yhatLower = data.predictions.map(p => p.yhat_lower || 0);
       const yhatUpper = data.predictions.map(p => p.yhat_upper || 0);
 
+      const isArea = type === 'area';
+
       chartInstance = new Chart(ctx, {
-        type: 'line',
+        type: isArea ? 'line' : type,
         data: {
           labels: labels,
           datasets: [
             {
               label: 'Predicted AQI',
               data: yhat,
-              borderColor: 'blue',
-              fill: false
+              borderColor: '#2980b9',
+              backgroundColor: isArea ? 'rgba(52, 152, 219, 0.3)' : '#3498db',
+              fill: isArea,
+              tension: 0.4
             },
             {
               label: 'Min AQI',
@@ -198,7 +361,16 @@
             legend: { position: 'top' },
             title: {
               display: true,
-              text: `AQI Forecast for ${data.city}`
+              text: `AQI Forecast for ${data.city} - ${type.charAt(0).toUpperCase() + type.slice(1)} Chart`
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              title: {
+                display: true,
+                text: 'AQI (μg/m³)'
+              }
             }
           }
         }
